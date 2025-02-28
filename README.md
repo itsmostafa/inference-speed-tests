@@ -1,6 +1,8 @@
-# inference-speed-tests
+# Inference Speed Tests on Local LLMs
 
-Local LLM inference speed tests on various devices
+Inference speed tests on Local Large Language Models on various devices. Feel free to contribute your results.
+
+**Note**: None of the following results are verified
 
 ### Macbook Pro
 
