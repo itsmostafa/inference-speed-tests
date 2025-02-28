@@ -4,6 +4,8 @@ Inference speed tests on Local Large Language Models on various devices. Feel fr
 
 **Note**: None of the following results are verified
 
+All models have been tested with the following Prompt: `Write a 500 word story`
+
 ### Macbook Pro
 
 | GGUF models (Ollama) | M4 Max (128 GB RAM, 40-core GPU) | M1 Pro (32GB RAM, 16-core GPU) |
