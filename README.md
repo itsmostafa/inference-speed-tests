@@ -33,3 +33,23 @@ All models have been tested with the following Prompt: `Write a 500 word story`
 | Qwen2.5-14B-Instruct (4bit) | 39.04 tokens/s                   | 14.67 tokens/s                 |
 | Qwen2.5-32B-Instruct (4bit) | 19.56 tokens/s                   | 4.53 tokens/s                  |
 | Qwen2.5-72B-Instruct (4bit) | 8.31 tokens/s                    | Didn't Test                    |
+
+### Mac Studio
+
+#### Ollama
+
+| GGUF models               | M1 Max (32GB RAM, 23-core GPU) |
+| ------------------------- | ------------------------------ |
+| mistral-small:23b (4bit)  | 15.11 tokens/s                 |
+| llama3.1:8b (4bit)        | 38.73 tokens/s                 |
+| llama3.2-vision:9b (4bit) | 39.05 tokens/s                 |
+| deepseek-r1:14b (4bit)    | 21.16 tokens/s                 |
+
+## Contributing
+
+### Using Ollama
+
+1. Run your model with the verbose flag (e.g `ollama run mistral-small --verbose`)
+2. Enter the prompt `Write a 500 word story`
+3. In the column of your device add the TPS (tokens-per-second) output of `eval rate` in Ollama
+4. If your device is not in the list add it
