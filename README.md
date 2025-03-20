@@ -38,12 +38,20 @@ All models have been tested with the following Prompt: `Write a 500 word story`
 
 #### Ollama
 
-| GGUF models               | M1 Max (32GB RAM, 23-core GPU) |
-| ------------------------- | ------------------------------ |
-| mistral-small:23b (4bit)  | 15.11 tokens/s                 |
-| llama3.1:8b (4bit)        | 38.73 tokens/s                 |
-| llama3.2-vision:9b (4bit) | 39.05 tokens/s                 |
-| deepseek-r1:14b (4bit)    | 21.16 tokens/s                 |
+| GGUF models               | M1 Max (32GB RAM, 23-core GPU) | M3 Ultra (256GB, 80-core GPU) |
+| ------------------------- | ------------------------------ | ----------------------------- |
+| mistral-small:23b (4bit)  | 15.11 tokens/s                 | Didn't Test                   |
+| mistral-large:123b (4bit) | Didn't Test                    | 8.42 tokens/s                 |
+| llama3.1:8b (4bit)        | 38.73 tokens/s                 | 85.02 tokens/s                |
+| llama3.2-vision:9b (4bit) | 39.05 tokens/s                 | Didn't Test                   |
+| deepseek-r1:14b (4bit)    | 21.16 tokens/s                 | 46.50 tokens/s                |
+| deepseek-r1:32b (4bit)    | Didn't Test                    | 25.58 tokens/s                |
+| deepseek-r1:70b (4bit)    | Didn't Test                    | 13.16 tokens/s                |
+| hermes3:405b (4bit)       | Didn't Test                    | 2.47 tokens/s                 |
+| Qwen2.5:7B (4bit)         | Didn't Test                    | 88.87 tokens/s                |
+| Qwen2.5:14B (4bit)        | Didn't Test                    | 47.25 tokens/s                |
+| Qwen2.5:32B (4bit)        | Didn't Test                    | 26.02 tokens/s                |
+| Qwen2.5:70B (4bit)        | Didn't Test                    | 12.21 tokens/s                |
 
 ## Contributing
 
