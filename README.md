@@ -10,12 +10,12 @@ All models have been tested with the following Prompt: `Write a 500 word story`
 
 #### Ollama
 
-| GGUF models        | M4 Max (128 GB RAM, 40-core GPU) | M1 Pro (32GB RAM, 16-core GPU) |
-| ------------------ | -------------------------------- | ------------------------------ |
-| Qwen2.5:7B (4bit)  | 72.50 tokens/s                   | 26.85 tokens/s                 |
-| Qwen2.5:14B (4bit) | 38.23 tokens/s                   | 14.66 tokens/s                 |
-| Qwen2.5:32B (4bit) | 19.35 tokens/s                   | 6.95 tokens/s                  |
-| Qwen2.5:72B (4bit) | 8.76 tokens/s                    | Didn't Test                    |
+| GGUF models        | M4 Max (128 GB RAM, 40-core GPU) | M4 Pro (48 GB RAM, 20-core GPU) | M1 Pro (32GB RAM, 16-core GPU) | Intel Core i7, mid-2015<br/>(16 GB RAM, Iris Pro) |
+| ------------------ | -------------------------------- |---------------------------------| ------------------------------ |---------------------------------------------------|
+| Qwen2.5:7B (4bit)  | 72.50 tokens/s                   | 42.57 tokens/s                  | 26.85 tokens/s                 | 4.02 tokens/s                                     |
+| Qwen2.5:14B (4bit) | 38.23 tokens/s                   | 22.03 tokens/s                  | 14.66 tokens/s                 | 2.04 tokens/s                                     |
+| Qwen2.5:32B (4bit) | 19.35 tokens/s                   | 10.62 tokens/s                  | 6.95 tokens/s                  | Didn't Test                                       |
+| Qwen2.5:72B (4bit) | 8.76 tokens/s                    | Didn't Test                     | Didn't Test                    | Didn't Test                                       |
 
 #### LM Studio
 
