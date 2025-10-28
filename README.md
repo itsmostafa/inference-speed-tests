@@ -6,16 +6,21 @@ Inference speed tests on Local Large Language Models on various devices. Feel fr
 
 All models have been tested with the following Prompt: `Write a 500 word story`
 
-### Macbook Pro
+### MacBook Pro
 
 #### Ollama
 
-| GGUF models        | M4 Max (128 GB RAM, 40-core GPU) | M1 Pro (32GB RAM, 16-core GPU) |
-| ------------------ | -------------------------------- | ------------------------------ |
-| Qwen2.5:7B (4bit)  | 72.50 tokens/s                   | 26.85 tokens/s                 |
-| Qwen2.5:14B (4bit) | 38.23 tokens/s                   | 14.66 tokens/s                 |
-| Qwen2.5:32B (4bit) | 19.35 tokens/s                   | 6.95 tokens/s                  |
-| Qwen2.5:72B (4bit) | 8.76 tokens/s                    | Didn't Test                    |
+| GGUF models        | M4 Max (128 GB RAM, 40-core GPU) | M1 Pro (32GB RAM, 16-core GPU) | M1 Pro (16GB Ram, 16-core GPU) |
+| ------------------ | -------------------------------- | ------------------------------ | ------------------------------ |
+| Qwen2.5:7B  (4bit) | 72.50 tokens/s                   | 26.85 tokens/s                 | Didn't Test                    |
+| Qwen2.5:14B (4bit) | 38.23 tokens/s                   | 14.66 tokens/s                 | Didn't Test                    |
+| Qwen2.5:32B (4bit) | 19.35 tokens/s                   | 6.95  tokens/s                 | Didn't Test                    |
+| Qwen2.5:72B (4bit) | 8.76  tokens/s                   | Didn't Test                    | Didn't Test                    |
+| Qwen3:4b    (4bit) | Didn't Test                      | Didn't Test                    | Won’t Complete (Too Slow)      |
+| Qwen3:8b    (4bit) | Didn't Test                      | Didn't Test                    | 18.73 tokens/s                 |
+| Gemma3:1b   (4bit) | Didn't Test                      | Didn't Test                    | 66.63 tokens/s                 |
+| Gemma3:4b   (4bit) | Didn't Test                      | Didn't Test                    | 33.99 tokens/s                 |
+| Gemma3:12b  (4bit) | Didn't Test                      | Didn't Test                    | Won’t Complete (Too Slow)      |
 
 #### LM Studio
 
@@ -59,5 +64,5 @@ All models have been tested with the following Prompt: `Write a 500 word story`
 
 1. Run your model with the verbose flag (e.g `ollama run mistral-small --verbose`)
 2. Enter the prompt `Write a 500 word story`
-3. In the column of your device add the TPS (tokens-per-second) output of `eval rate` in Ollama
-4. If your device is not in the list add it
+3. In the column of your device, add the TPS (tokens-per-second) output of `eval rate` in Ollama
+4. If your device is not in the list, add it
