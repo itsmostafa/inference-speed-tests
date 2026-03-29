@@ -18,17 +18,40 @@ uv sync
 ```
 
 ```bash
-# Benchmark a single model (1 iteration, saves to results.md)
-uv run python main.py mlx-community/Qwen2.5-7B-Instruct-4bit -n 1
+# Benchmark a single model (1 iteration)
+uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit -n 1
 
 # Benchmark multiple models with 3 iterations
-uv run python main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit
+uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit
 
 # Custom prompt, output file, and iteration count
-uv run python main.py mlx-community/Qwen2.5-32B-Instruct-4bit \
+uv run main.py mlx-community/Qwen2.5-32B-Instruct-4bit \
   --prompt "Write a 500 word story" \
   --iterations 5 \
   --output my_results.md
 ```
 
 Results are written as a Markdown file with a summary table (mean ± stdev across iterations) and per-iteration details including prompt tps, generation tps, time-to-first-token, peak memory, and total time.
+
+Results are automatically saved into a device-specific folder derived from your Mac model, chip, RAM, and GPU core count — for example:
+
+```
+macbook-pro-m5-max-128gb-40-core-gpu/
+mac-mini-m4-pro-64gb-20-core-gpu/
+```
+
+This keeps results from different machines organized without any manual effort. To override the output location, pass a path that includes a directory to `-o` (e.g. `--output my-folder/results.md`).
+
+## Contributing
+
+Everyone is welcome and encouraged to contribute their benchmark results. The more devices represented, the more useful this becomes for the community.
+
+**To submit your results:**
+
+1. Fork this repo and clone it locally
+2. Run the benchmark script on your machine (see above) — results will be saved into a device-specific folder automatically
+3. Open a pull request with your new folder added to the repo
+
+That's it. No special format required — just run the script and submit the output as-is.
+
+If you're running models manually or on non-Apple-Silicon hardware, feel free to add results in whatever format makes sense. Open a PR or an issue and we'll figure it out.
