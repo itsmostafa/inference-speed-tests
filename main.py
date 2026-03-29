@@ -200,6 +200,52 @@ def _short_name(model_id: str) -> str:
     return model_id.split("/")[-1]
 
 
+def parse_existing_iterations(file_path: Path, model_id: str) -> list[IterationResult]:
+    """Parse iteration rows from an existing result file for the given model."""
+    try:
+        lines = file_path.read_text().splitlines()
+    except FileNotFoundError:
+        return []
+
+    short_name = _short_name(model_id)
+    iterations: list[IterationResult] = []
+    in_section = False
+    in_table = False
+    header_passed = False
+
+    for line in lines:
+        if line.strip() == f"### {short_name}":
+            in_section = True
+            continue
+        if in_section and line.startswith("### "):
+            break  # next model section
+        if in_section and "| Run |" in line:
+            in_table = True
+            continue
+        if in_table and line.startswith("| ---"):
+            header_passed = True
+            continue
+        if in_table and header_passed:
+            if not line.startswith("|"):
+                break
+            parts = [p.strip() for p in line.strip("|").split("|")]
+            if len(parts) >= 6:
+                try:
+                    iterations.append(IterationResult(
+                        prompt_tokens=0,
+                        generation_tokens=0,
+                        prompt_tps=float(parts[1]),
+                        generation_tps=float(parts[2]),
+                        time_to_first_token=float(parts[3]),
+                        peak_memory_gb=float(parts[4]),
+                        total_time=float(parts[5]),
+                    ))
+                except (ValueError, IndexError):
+                    pass
+
+    return iterations
+
+
 def format_results_markdown(
     device_info: dict,
     results: list[ModelResult],
@@ -296,8 +342,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output", "-o",
-        default="results.md",
-        help="Output markdown file path (default: results.md)",
+        default=None,
+        help="Output markdown file path (default: <ModelName>.md derived from model ID)",
     )
     parser.add_argument(
         "--no-warmup",
@@ -321,6 +367,14 @@ def main():
         file=sys.stderr,
     )
 
+    # Derive output filename from model name if not explicitly provided
+    if args.output is None:
+        if len(args.models) == 1:
+            model_name = args.models[0].split("/")[-1]
+            args.output = f"{model_name}.md"
+        else:
+            args.output = "results.md"
+
     # Place output in the device folder unless the user specified a directory
     output_path = Path(args.output)
     if not output_path.parent.name or output_path.parent == Path("."):
@@ -328,6 +382,18 @@ def main():
         device_folder.mkdir(parents=True, exist_ok=True)
         output_path = device_folder / output_path.name
     print(f"Output path: {output_path}", file=sys.stderr)
+
+    # Load any existing iterations for single-model runs before benchmarking
+    existing_iterations: dict[str, list[IterationResult]] = {}
+    if len(args.models) == 1 and output_path.exists():
+        model_id = args.models[0]
+        prior = parse_existing_iterations(output_path, model_id)
+        if prior:
+            print(
+                f"Found {len(prior)} existing iteration(s) in {output_path} — will append.",
+                file=sys.stderr,
+            )
+            existing_iterations[model_id] = prior
 
     results: list[ModelResult] = []
     try:
@@ -346,6 +412,14 @@ def main():
     if not results or all(r.error and not r.iterations for r in results):
         print("No successful results to write.", file=sys.stderr)
         return
+
+    # Prepend existing iterations so the summary and tables reflect all runs
+    for r in results:
+        if r.model_id in existing_iterations:
+            r.iterations = existing_iterations[r.model_id] + r.iterations
+
+    total_iterations = max(len(r.iterations) for r in results) if results else args.iterations
+    args.iterations = total_iterations
 
     markdown = format_results_markdown(device_info, results, args)
     with open(output_path, "w") as f:
