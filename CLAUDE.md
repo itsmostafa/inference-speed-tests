@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Single model, 1 iteration
-uv run python main.py mlx-community/GLM-4.7-Flash-4bit -n 1 -o results.md
+uv run main.py mlx-community/GLM-4.7-Flash-4bit -n 1 -o results.md
 
 # Multiple models, 3 iterations (default), custom output file
-uv run python main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit -o my_results.md
+uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit -o my_results.md
 
 # All options
-uv run python main.py MODEL_ID [-n ITERATIONS] [-p "prompt"] [--max-tokens N] [-o output.md] [--no-warmup]
+uv run main.py MODEL_ID [-n ITERATIONS] [-p "prompt"] [--max-tokens N] [-o output.md] [--no-warmup]
 ```
 
 ## Architecture

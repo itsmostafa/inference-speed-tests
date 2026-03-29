@@ -1,12 +1,14 @@
 import argparse
 import gc
 import platform
+import re
 import statistics
 import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 
 from mlx_lm import load, stream_generate
 
@@ -63,8 +65,40 @@ def get_device_info() -> dict:
     except Exception:
         info["gpu_cores"] = "Unknown"
 
+    try:
+        sp_hw = subprocess.check_output(
+            ["system_profiler", "SPHardwareDataType"], text=True
+        )
+        model_name = "Unknown"
+        for line in sp_hw.splitlines():
+            if "Model Name" in line:
+                model_name = line.split(":")[-1].strip()
+                break
+        info["model_name"] = model_name
+    except Exception:
+        info["model_name"] = "Unknown"
+
     info["os"] = platform.platform()
     return info
+
+
+def derive_device_folder(device_info: dict) -> str:
+    model_name = device_info.get("model_name", "Unknown")
+    chip = device_info.get("chip", "Unknown")
+    memory_gb = device_info.get("memory_gb", "Unknown")
+    gpu_cores = device_info.get("gpu_cores", "Unknown")
+
+    # "MacBook Pro" → "macbook-pro", "Mac mini" → "mac-mini"
+    model_slug = re.sub(r"\s+", "-", model_name.strip()).lower()
+
+    # "Apple M5 Max" → "m5-max"
+    chip_slug = re.sub(r"^apple\s+", "", chip.strip(), flags=re.IGNORECASE)
+    chip_slug = re.sub(r"\s+", "-", chip_slug).lower()
+
+    ram_part = f"{memory_gb}gb" if isinstance(memory_gb, int) else "unknown-ram"
+    gpu_part = f"{gpu_cores}-core-gpu" if gpu_cores != "Unknown" else "unknown-gpu"
+
+    return f"{model_slug}-{chip_slug}-{ram_part}-{gpu_part}"
 
 
 def format_prompt(tokenizer, prompt: str) -> str:
@@ -280,11 +314,20 @@ def main():
     device_info = get_device_info()
     gpu = device_info.get("gpu_cores", "Unknown")
     print(
-        f"Device: {device_info.get('chip')} | "
+        f"Device: {device_info.get('model_name')} | "
+        f"{device_info.get('chip')} | "
         f"{device_info.get('memory_gb')} GB | "
         f"{gpu}-core GPU",
         file=sys.stderr,
     )
+
+    # Place output in the device folder unless the user specified a directory
+    output_path = Path(args.output)
+    if not output_path.parent.name or output_path.parent == Path("."):
+        device_folder = Path(derive_device_folder(device_info))
+        device_folder.mkdir(parents=True, exist_ok=True)
+        output_path = device_folder / output_path.name
+    print(f"Output path: {output_path}", file=sys.stderr)
 
     results: list[ModelResult] = []
     try:
@@ -300,15 +343,15 @@ def main():
     except KeyboardInterrupt:
         print("\nInterrupted — writing partial results...", file=sys.stderr)
 
-    if not results:
-        print("No results to write.", file=sys.stderr)
+    if not results or all(r.error and not r.iterations for r in results):
+        print("No successful results to write.", file=sys.stderr)
         return
 
     markdown = format_results_markdown(device_info, results, args)
-    with open(args.output, "w") as f:
+    with open(output_path, "w") as f:
         f.write(markdown)
 
-    print(f"\nResults written to {args.output}", file=sys.stderr)
+    print(f"\nResults written to {output_path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
