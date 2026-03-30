@@ -36,3 +36,7 @@ This is a single-script project (`main.py`) with one dependency (`mlx-lm`). All 
 The `README.md` and `mac mini.md` contain hand-collected benchmark data from community contributors (tokens/s across various Apple Silicon devices). The standard test prompt used historically is `"Write a 500 word story"`, which is also the default in `main.py`.
 
 All models used are MLX-format models from HuggingFace (typically under the `mlx-community/` org). This script only works on Apple Silicon (macOS, MLX framework).
+
+## After making code changes
+
+Always run `task check` at the end of any coding session to verify tests pass, linting is clean, and types are correct.

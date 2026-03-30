@@ -75,3 +75,4 @@ Thumbs.db
 
 # AI
 ai_docs/
+.claude/
