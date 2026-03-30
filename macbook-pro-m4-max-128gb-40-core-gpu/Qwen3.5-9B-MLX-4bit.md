@@ -1,23 +1,26 @@
 # Inference Speed Test Results
 
-**Date**: 2026-03-28
+**Date**: 2026-03-30
 **Device**: Apple M4 Max | 128 GB RAM | 40-core GPU
 **OS**: macOS-26.2-arm64-arm-64bit-Mach-O
-**Prompt**: `Write a 500 word story`
-**Max tokens**: 512 | **Iterations**: 3
+**Max tokens**: 512
 
-## Summary
+## Prompt: `prompts/500_word_story.md`
 
-| Model | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
-| ----- | ---------- | -------------- | -------- | ---------------- | -------------- |
-| Qwen3.5-9B-MLX-4bit | 241.12 ± 21.66 | 90.81 ± 0.14 | 0.178 ± 0.006 | 5.14 ± 0.00 | 5.83 ± 0.01 |
+**Iterations**: 3
 
-## Per-Iteration Details
+### Summary
 
-### Qwen3.5-9B-MLX-4bit
+| Model | Max Ctx | Prompt Tokens | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
+| ----- | ------- | ------------- | ---------- | -------------- | -------- | ---------------- | -------------- |
+| Qwen3.5-9B-MLX-4bit | N/A | 18 | 242.48 ± 19.33 | 90.45 ± 0.09 | 0.182 ± 0.007 | 5.14 ± 0.00 | 5.85 ± 0.01 |
+
+### Per-Iteration Details
+
+#### Qwen3.5-9B-MLX-4bit
 
 | Run | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
 | --- | ---------- | -------------- | -------- | ---------------- | -------------- |
-| 1 | 216.14 | 90.78 | 0.182 | 5.14 | 5.83 |
-| 2 | 254.67 | 90.69 | 0.171 | 5.14 | 5.83 |
-| 3 | 252.55 | 90.97 | 0.181 | 5.14 | 5.82 |
+| 1 | 220.16 | 90.45 | 0.178 | 5.14 | 5.85 |
+| 2 | 253.15 | 90.54 | 0.179 | 5.14 | 5.84 |
+| 3 | 254.14 | 90.36 | 0.190 | 5.14 | 5.87 |
