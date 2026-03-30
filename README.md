@@ -26,12 +26,21 @@ uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-
 
 # Custom prompt, output file, and iteration count
 uv run main.py mlx-community/Qwen2.5-32B-Instruct-4bit \
-  --prompt "Write a 500 word story" \
+  --prompt "Explain quantum computing" \
   --iterations 5 \
   --output my_results.md
+
+# Multiple prompts in one run (results grouped by prompt)
+uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+  --prompt "Write a 500 word story" \
+  --prompt "Summarize the history of Rome"
+
+# Prompts from files
+uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+  --prompt-files prompts/500_word_story.md prompts/summarize-turbo-quant.md
 ```
 
-Results are written as a Markdown file with a summary table (mean ± stdev across iterations) and per-iteration details including prompt tps, generation tps, time-to-first-token, peak memory, and total time.
+Results are written as a Markdown file grouped by prompt, each with a summary table (mean ± stdev across iterations) and per-iteration details including model context size, prompt tps, generation tps, time-to-first-token, peak memory, and total time.
 
 Results are automatically saved into a device-specific folder derived from your Mac model, chip, RAM, and GPU core count — for example:
 
