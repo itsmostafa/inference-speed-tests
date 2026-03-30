@@ -19,24 +19,24 @@ uv sync
 
 ```bash
 # Benchmark a single model (1 iteration)
-uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit -n 1
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit -n 1
 
 # Benchmark multiple models with 3 iterations
-uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit
 
 # Custom prompt, output file, and iteration count
-uv run main.py mlx-community/Qwen2.5-32B-Instruct-4bit \
+uv run src/main.py mlx-community/Qwen2.5-32B-Instruct-4bit \
   --prompt "Explain quantum computing" \
   --iterations 5 \
   --output my_results.md
 
 # Multiple prompts in one run (results grouped by prompt)
-uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
   --prompt "Write a 500 word story" \
   --prompt "Summarize the history of Rome"
 
 # Prompts from files
-uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
   --prompt-files prompts/500_word_story.md prompts/summarize-turbo-quant.md
 ```
 

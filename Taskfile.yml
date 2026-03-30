@@ -4,22 +4,22 @@ tasks:
   format:
     desc: Format main.py with ruff
     cmds:
-      - ruff format main.py
+      - ruff format src/main.py
 
   typecheck:
     desc: Typecheck main.py with pyright
     cmds:
-      - pyright main.py
+      - pyright src/main.py
 
   lint:
     desc: Lint main.py with ruff
     cmds:
-      - ruff check main.py
+      - ruff check src/main.py
 
   test:
     desc: Run unit tests with pytest
     cmds:
-      - uv run pytest test_main.py -v
+      - uv run pytest src/test_main.py -v
 
   check:
     desc: Run test, lint, and typecheck in parallel

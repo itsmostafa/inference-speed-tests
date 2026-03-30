@@ -6,26 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Single model, 1 iteration
-uv run main.py mlx-community/GLM-4.7-Flash-4bit -n 1 -o results.md
+uv run src/main.py mlx-community/GLM-4.7-Flash-4bit -n 1 -o results.md
 
 # Multiple models, 3 iterations (default), custom output file
-uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit -o my_results.md
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-14B-Instruct-4bit -o my_results.md
 
 # All options
-uv run main.py MODEL_ID [-n ITERATIONS] [-p "inline prompt"] [--prompt-files FILE ...] [--max-tokens N] [-o output.md] [--no-warmup]
+uv run src/main.py MODEL_ID [-n ITERATIONS] [-p "inline prompt"] [--prompt-files FILE ...] [--max-tokens N] [-o output.md] [--no-warmup]
 
 # Multiple prompts — --prompt is repeatable; results are grouped by prompt in the output
-uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
   -p "Write a 500 word story" -p "Explain quantum computing"
 
 # Prompts from files
-uv run main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
   --prompt-files prompts/500_word_story.md prompts/summarize-turbo-quant.md
 ```
 
 ## Architecture
 
-This is a single-script project (`main.py`) with one dependency (`mlx-lm`). All logic lives in `main.py`.
+This is a single-script project (`src/main.py`) with one dependency (`mlx-lm`). All logic lives in `src/main.py`.
 
 **Benchmark flow:**
 1. `main()` → builds the list of `(label, text)` prompt pairs, calls `get_device_info()`, then loops over prompts × models calling `benchmark_model()` for each combination

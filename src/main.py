@@ -12,7 +12,7 @@ from pathlib import Path
 
 from mlx_lm import load, stream_generate
 
-_PROMPT_FILE = Path(__file__).parent / "prompts" / "500_word_story.md"
+_PROMPT_FILE = Path(__file__).parent.parent / "prompts" / "500_word_story.md"
 DEFAULT_PROMPT = _PROMPT_FILE.read_text().strip()
 DEFAULT_MAX_TOKENS = 512
 DEFAULT_ITERATIONS = 3
@@ -34,6 +34,7 @@ class ModelResult:
     model_id: str
     prompt_label: str = ""
     context_size: int | None = None
+    prompt_tokens: int | None = None
     iterations: list[IterationResult] = field(default_factory=list)
     error: str | None = None
 
@@ -128,14 +129,18 @@ def benchmark_model(
 
     print(f"\n[{model_id}] Loading...", file=sys.stderr)
     try:
-        model, tokenizer = load(model_id, tokenizer_config={"trust_remote_code": True})
+        model, tokenizer, *_ = load(model_id, tokenizer_config={"trust_remote_code": True})
     except Exception as e:
         result.error = str(e)
         print(f"[{model_id}] Load failed: {e}", file=sys.stderr)
         return result
 
     model_args = getattr(model, 'args', None)
-    result.context_size = getattr(model_args, 'max_position_embeddings', None)
+    ctx = getattr(model_args, 'max_position_embeddings', None)
+    if ctx is None:
+        text_config = getattr(model_args, 'text_config', None)
+        ctx = getattr(text_config, 'max_position_embeddings', None)
+    result.context_size = ctx
 
     formatted = format_prompt(tokenizer, prompt)
 
@@ -179,6 +184,8 @@ def benchmark_model(
                 total_time=t_end - t_start,
             )
             result.iterations.append(iter_result)
+            if result.prompt_tokens is None and iter_result.prompt_tokens:
+                result.prompt_tokens = iter_result.prompt_tokens
             print(
                 f"[{model_id}] Iter {i + 1}: "
                 f"gen_tps={iter_result.generation_tps:.1f}, "
@@ -293,6 +300,85 @@ def parse_existing_iterations(
     return iterations
 
 
+def parse_all_existing_prompt_labels(file_path: Path) -> list[str]:
+    """Return all prompt labels found in ## Prompt: `...` headers, in order."""
+    try:
+        lines = file_path.read_text().splitlines()
+    except FileNotFoundError:
+        return []
+    labels = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("## Prompt: `") and stripped.endswith("`"):
+            labels.append(stripped[len("## Prompt: `"):-1])
+    return labels
+
+
+def _parse_summary_column(
+    file_path: Path, model_id: str, prompt_label: str, col_index: int
+) -> str | None:
+    """Return the raw cell value at col_index from the summary table row for the given model+prompt."""
+    try:
+        lines = file_path.read_text().splitlines()
+    except FileNotFoundError:
+        return None
+    short_name = _short_name(model_id)
+    in_prompt = False
+    in_summary = False
+    header_passed = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped == f"## Prompt: `{prompt_label}`":
+            in_prompt = True
+            continue
+        if in_prompt and stripped.startswith("## "):
+            break
+        if not in_prompt:
+            continue
+        if "### Summary" in stripped:
+            in_summary = True
+            continue
+        if not in_summary:
+            continue
+        if stripped.startswith("### "):
+            break
+        if stripped.startswith("| Model"):
+            header_passed = True
+            continue
+        if header_passed and line.startswith("|"):
+            parts = [p.strip() for p in line.strip("|").split("|")]
+            if parts and parts[0] == short_name and len(parts) > col_index:
+                return parts[col_index]
+    return None
+
+
+def parse_existing_context_size(file_path: Path, model_id: str, prompt_label: str) -> int | None:
+    """Parse the context size for a model+prompt from the summary table of an existing file."""
+    raw = _parse_summary_column(file_path, model_id, prompt_label, col_index=1)
+    if raw is None or raw == "N/A":
+        return None
+    if raw.endswith("K"):
+        try:
+            return int(raw[:-1]) * 1024
+        except ValueError:
+            return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
+def parse_existing_prompt_tokens(file_path: Path, model_id: str, prompt_label: str) -> int | None:
+    """Parse the prompt token count for a model+prompt from the summary table of an existing file."""
+    raw = _parse_summary_column(file_path, model_id, prompt_label, col_index=2)
+    if raw is None or raw == "N/A":
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 def format_results_markdown(
     device_info: dict,
     results: list[ModelResult],
@@ -330,20 +416,21 @@ def format_results_markdown(
         lines.append("")
 
         lines.append("### Summary\n")
-        header = "| Model | Context | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |"
-        sep = "| ----- | ------- | ---------- | -------------- | -------- | ---------------- | -------------- |"
+        header = "| Model | Max Ctx | Prompt Tokens | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |"
+        sep = "| ----- | ------- | ------------- | ---------- | -------------- | -------- | ---------------- | -------------- |"
         lines.append(header)
         lines.append(sep)
 
         for r in prompt_results:
             name = _short_name(r.model_id)
             if r.error and not r.iterations:
-                lines.append(f"| {name} | N/A | FAILED: {r.error} | | | | |")
+                lines.append(f"| {name} | N/A | N/A | FAILED: {r.error} | | | | |")
                 continue
             iters = r.iterations
             lines.append(
                 f"| {name} "
                 f"| {_fmt_ctx(r.context_size)} "
+                f"| {_fmt_ctx(r.prompt_tokens)} "
                 f"| {_fmt([i.prompt_tps for i in iters])} "
                 f"| {_fmt([i.generation_tps for i in iters])} "
                 f"| {_fmt([i.time_to_first_token for i in iters], 3)} "
@@ -448,7 +535,7 @@ def main():
             prompt_pairs.append((label, p))
 
     if not prompt_pairs:
-        rel = str(_PROMPT_FILE.relative_to(Path(__file__).parent))
+        rel = str(_PROMPT_FILE.relative_to(Path(__file__).parent.parent))
         prompt_pairs = [(rel, DEFAULT_PROMPT)]
 
     print("Collecting device info...", file=sys.stderr)
@@ -516,6 +603,23 @@ def main():
         key = (r.model_id, r.prompt_label)
         if key in existing:
             r.iterations = existing[key] + r.iterations
+
+    # Preserve prompt sections from the existing file that were not part of this run
+    if len(args.models) == 1 and output_path.exists():
+        current_labels = {r.prompt_label for r in results}
+        for label in parse_all_existing_prompt_labels(output_path):
+            if label not in current_labels:
+                prior_iters = parse_existing_iterations(output_path, args.models[0], label)
+                if prior_iters:
+                    ctx = parse_existing_context_size(output_path, args.models[0], label)
+                    pt = parse_existing_prompt_tokens(output_path, args.models[0], label)
+                    results.append(ModelResult(
+                        model_id=args.models[0],
+                        prompt_label=label,
+                        context_size=ctx,
+                        prompt_tokens=pt,
+                        iterations=prior_iters,
+                    ))
 
     markdown = format_results_markdown(device_info, results, args)
     with open(output_path, "w") as f:
