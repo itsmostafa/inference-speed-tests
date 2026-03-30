@@ -507,7 +507,7 @@ def parse_args() -> argparse.Namespace:
         "--output",
         "-o",
         default=None,
-        help="Output markdown file path (default: <ModelName>.md derived from model ID)",
+        help="Output markdown file path (default: results/<device>/<ModelName>.md)",
     )
     parser.add_argument(
         "--no-warmup",
@@ -557,10 +557,10 @@ def main():
         else:
             args.output = "results.md"
 
-    # Place output in the device folder unless the user specified a directory
+    # Place output in results/<device-folder>/ unless the user specified a directory
     output_path = Path(args.output)
     if not output_path.parent.name or output_path.parent == Path("."):
-        device_folder = Path(derive_device_folder(device_info))
+        device_folder = Path("results") / derive_device_folder(device_info)
         device_folder.mkdir(parents=True, exist_ok=True)
         output_path = device_folder / output_path.name
     print(f"Output path: {output_path}", file=sys.stderr)
