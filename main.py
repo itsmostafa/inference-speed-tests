@@ -12,7 +12,8 @@ from pathlib import Path
 
 from mlx_lm import load, stream_generate
 
-DEFAULT_PROMPT = "Write a 500 word story"
+_PROMPT_FILE = Path(__file__).parent / "prompts" / "500_word_story.md"
+DEFAULT_PROMPT = _PROMPT_FILE.read_text().strip()
 DEFAULT_MAX_TOKENS = 512
 DEFAULT_ITERATIONS = 3
 
@@ -31,6 +32,8 @@ class IterationResult:
 @dataclass
 class ModelResult:
     model_id: str
+    prompt_label: str = ""
+    context_size: int | None = None
     iterations: list[IterationResult] = field(default_factory=list)
     error: str | None = None
 
@@ -116,11 +119,12 @@ def format_prompt(tokenizer, prompt: str) -> str:
 def benchmark_model(
     model_id: str,
     prompt: str,
+    prompt_label: str,
     max_tokens: int,
     iterations: int,
     warmup: bool,
 ) -> ModelResult:
-    result = ModelResult(model_id=model_id)
+    result = ModelResult(model_id=model_id, prompt_label=prompt_label)
 
     print(f"\n[{model_id}] Loading...", file=sys.stderr)
     try:
@@ -129,6 +133,9 @@ def benchmark_model(
         result.error = str(e)
         print(f"[{model_id}] Load failed: {e}", file=sys.stderr)
         return result
+
+    model_args = getattr(model, 'args', None)
+    result.context_size = getattr(model_args, 'max_position_embeddings', None)
 
     formatted = format_prompt(tokenizer, prompt)
 
@@ -156,7 +163,10 @@ def benchmark_model(
             t_end = time.perf_counter()
 
             if response is None:
-                print(f"[{model_id}] No tokens generated in iteration {i + 1}", file=sys.stderr)
+                print(
+                    f"[{model_id}] No tokens generated in iteration {i + 1}",
+                    file=sys.stderr,
+                )
                 continue
 
             iter_result = IterationResult(
@@ -200,8 +210,18 @@ def _short_name(model_id: str) -> str:
     return model_id.split("/")[-1]
 
 
-def parse_existing_iterations(file_path: Path, model_id: str) -> list[IterationResult]:
-    """Parse iteration rows from an existing result file for the given model."""
+def _fmt_ctx(ctx: int | None) -> str:
+    if ctx is None:
+        return "N/A"
+    if ctx >= 1024:
+        return f"{ctx // 1024}K"
+    return str(ctx)
+
+
+def parse_existing_iterations(
+    file_path: Path, model_id: str, prompt_label: str
+) -> list[IterationResult]:
+    """Parse iteration rows from an existing result file for the given model and prompt."""
     try:
         lines = file_path.read_text().splitlines()
     except FileNotFoundError:
@@ -209,17 +229,42 @@ def parse_existing_iterations(file_path: Path, model_id: str) -> list[IterationR
 
     short_name = _short_name(model_id)
     iterations: list[IterationResult] = []
-    in_section = False
+    in_prompt_section = False
+    in_model_section = False
     in_table = False
     header_passed = False
 
     for line in lines:
-        if line.strip() == f"### {short_name}":
-            in_section = True
+        stripped = line.strip()
+
+        if stripped == f"## Prompt: `{prompt_label}`":
+            in_prompt_section = True
+            in_model_section = False
+            in_table = False
+            header_passed = False
             continue
-        if in_section and line.startswith("### "):
-            break  # next model section
-        if in_section and "| Run |" in line:
+
+        # Hit a different top-level section — stop searching
+        if in_prompt_section and stripped.startswith("## "):
+            break
+
+        if not in_prompt_section:
+            continue
+
+        if stripped == f"#### {short_name}":
+            in_model_section = True
+            in_table = False
+            header_passed = False
+            continue
+
+        # Hit the next model within this prompt section — stop
+        if in_model_section and stripped.startswith("#### "):
+            break
+
+        if not in_model_section:
+            continue
+
+        if "| Run |" in line:
             in_table = True
             continue
         if in_table and line.startswith("| ---"):
@@ -231,15 +276,17 @@ def parse_existing_iterations(file_path: Path, model_id: str) -> list[IterationR
             parts = [p.strip() for p in line.strip("|").split("|")]
             if len(parts) >= 6:
                 try:
-                    iterations.append(IterationResult(
-                        prompt_tokens=0,
-                        generation_tokens=0,
-                        prompt_tps=float(parts[1]),
-                        generation_tps=float(parts[2]),
-                        time_to_first_token=float(parts[3]),
-                        peak_memory_gb=float(parts[4]),
-                        total_time=float(parts[5]),
-                    ))
+                    iterations.append(
+                        IterationResult(
+                            prompt_tokens=0,
+                            generation_tokens=0,
+                            prompt_tps=float(parts[1]),
+                            generation_tps=float(parts[2]),
+                            time_to_first_token=float(parts[3]),
+                            peak_memory_gb=float(parts[4]),
+                            total_time=float(parts[5]),
+                        )
+                    )
                 except (ValueError, IndexError):
                     pass
 
@@ -264,52 +311,71 @@ def format_results_markdown(
     lines.append(f"**Date**: {date.today()}")
     lines.append(f"**Device**: {chip} | {mem_str} RAM | {gpu_str}")
     lines.append(f"**OS**: {os_str}")
-    lines.append(f"**Prompt**: `{args.prompt}`")
-    lines.append(f"**Max tokens**: {args.max_tokens} | **Iterations**: {args.iterations}")
+    lines.append(f"**Max tokens**: {args.max_tokens}")
     lines.append("")
 
-    lines.append("## Summary\n")
-    header = "| Model | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |"
-    sep =    "| ----- | ---------- | -------------- | -------- | ---------------- | -------------- |"
-    lines.append(header)
-    lines.append(sep)
+    # Group by prompt_label, preserving insertion order
+    prompt_labels = list(dict.fromkeys(r.prompt_label for r in results))
 
-    for r in results:
-        name = _short_name(r.model_id)
-        if r.error and not r.iterations:
-            lines.append(f"| {name} | FAILED: {r.error} | | | | |")
-            continue
-        iters = r.iterations
-        lines.append(
-            f"| {name} "
-            f"| {_fmt([i.prompt_tps for i in iters])} "
-            f"| {_fmt([i.generation_tps for i in iters])} "
-            f"| {_fmt([i.time_to_first_token for i in iters], 3)} "
-            f"| {_fmt([i.peak_memory_gb for i in iters])} "
-            f"| {_fmt([i.total_time for i in iters])} |"
+    for prompt_label in prompt_labels:
+        prompt_results = [r for r in results if r.prompt_label == prompt_label]
+
+        lines.append(f"## Prompt: `{prompt_label}`\n")
+
+        total_iters = max(
+            (len(r.iterations) for r in prompt_results if r.iterations),
+            default=args.iterations,
         )
-
-    lines.append("")
-    lines.append("## Per-Iteration Details\n")
-
-    for r in results:
-        name = _short_name(r.model_id)
-        lines.append(f"### {name}\n")
-        if r.error and not r.iterations:
-            lines.append(f"**Error**: {r.error}\n")
-            continue
-        lines.append("| Run | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |")
-        lines.append("| --- | ---------- | -------------- | -------- | ---------------- | -------------- |")
-        for n, it in enumerate(r.iterations, 1):
-            lines.append(
-                f"| {n} "
-                f"| {it.prompt_tps:.2f} "
-                f"| {it.generation_tps:.2f} "
-                f"| {it.time_to_first_token:.3f} "
-                f"| {it.peak_memory_gb:.2f} "
-                f"| {it.total_time:.2f} |"
-            )
+        lines.append(f"**Iterations**: {total_iters}")
         lines.append("")
+
+        lines.append("### Summary\n")
+        header = "| Model | Context | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |"
+        sep = "| ----- | ------- | ---------- | -------------- | -------- | ---------------- | -------------- |"
+        lines.append(header)
+        lines.append(sep)
+
+        for r in prompt_results:
+            name = _short_name(r.model_id)
+            if r.error and not r.iterations:
+                lines.append(f"| {name} | N/A | FAILED: {r.error} | | | | |")
+                continue
+            iters = r.iterations
+            lines.append(
+                f"| {name} "
+                f"| {_fmt_ctx(r.context_size)} "
+                f"| {_fmt([i.prompt_tps for i in iters])} "
+                f"| {_fmt([i.generation_tps for i in iters])} "
+                f"| {_fmt([i.time_to_first_token for i in iters], 3)} "
+                f"| {_fmt([i.peak_memory_gb for i in iters])} "
+                f"| {_fmt([i.total_time for i in iters])} |"
+            )
+
+        lines.append("")
+        lines.append("### Per-Iteration Details\n")
+
+        for r in prompt_results:
+            name = _short_name(r.model_id)
+            lines.append(f"#### {name}\n")
+            if r.error and not r.iterations:
+                lines.append(f"**Error**: {r.error}\n")
+                continue
+            lines.append(
+                "| Run | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |"
+            )
+            lines.append(
+                "| --- | ---------- | -------------- | -------- | ---------------- | -------------- |"
+            )
+            for n, it in enumerate(r.iterations, 1):
+                lines.append(
+                    f"| {n} "
+                    f"| {it.prompt_tps:.2f} "
+                    f"| {it.generation_tps:.2f} "
+                    f"| {it.time_to_first_token:.3f} "
+                    f"| {it.peak_memory_gb:.2f} "
+                    f"| {it.total_time:.2f} |"
+                )
+            lines.append("")
 
     return "\n".join(lines)
 
@@ -324,9 +390,18 @@ def parse_args() -> argparse.Namespace:
         help="HuggingFace MLX model IDs (e.g. mlx-community/Qwen2.5-7B-Instruct-4bit)",
     )
     parser.add_argument(
-        "--prompt", "-p",
-        default=DEFAULT_PROMPT,
-        help=f'Prompt string (default: "{DEFAULT_PROMPT}")',
+        "--prompt",
+        "-p",
+        action="append",
+        dest="prompts",
+        metavar="PROMPT",
+        help="Inline prompt string (repeatable; default: reads from prompts/500_word_story.md)",
+    )
+    parser.add_argument(
+        "--prompt-files",
+        nargs="+",
+        metavar="FILE",
+        help="Path(s) to prompt file(s) (can be combined with --prompt)",
     )
     parser.add_argument(
         "--max-tokens",
@@ -335,13 +410,15 @@ def parse_args() -> argparse.Namespace:
         help=f"Max tokens to generate (default: {DEFAULT_MAX_TOKENS})",
     )
     parser.add_argument(
-        "--iterations", "-n",
+        "--iterations",
+        "-n",
         type=int,
         default=DEFAULT_ITERATIONS,
         help=f"Timed runs per model (default: {DEFAULT_ITERATIONS})",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default=None,
         help="Output markdown file path (default: <ModelName>.md derived from model ID)",
     )
@@ -355,6 +432,24 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
+
+    # Build ordered list of (label, text) prompt pairs
+    prompt_pairs: list[tuple[str, str]] = []
+
+    if args.prompt_files:
+        for f in args.prompt_files:
+            path = Path(f)
+            label = str(path)
+            prompt_pairs.append((label, path.read_text().strip()))
+
+    if args.prompts:
+        for p in args.prompts:
+            label = (p[:57] + "...") if len(p) > 60 else p
+            prompt_pairs.append((label, p))
+
+    if not prompt_pairs:
+        rel = str(_PROMPT_FILE.relative_to(Path(__file__).parent))
+        prompt_pairs = [(rel, DEFAULT_PROMPT)]
 
     print("Collecting device info...", file=sys.stderr)
     device_info = get_device_info()
@@ -383,29 +478,32 @@ def main():
         output_path = device_folder / output_path.name
     print(f"Output path: {output_path}", file=sys.stderr)
 
-    # Load any existing iterations for single-model runs before benchmarking
-    existing_iterations: dict[str, list[IterationResult]] = {}
+    # Load existing iterations keyed by (model_id, prompt_label) for single-model runs
+    existing: dict[tuple[str, str], list[IterationResult]] = {}
     if len(args.models) == 1 and output_path.exists():
         model_id = args.models[0]
-        prior = parse_existing_iterations(output_path, model_id)
-        if prior:
-            print(
-                f"Found {len(prior)} existing iteration(s) in {output_path} — will append.",
-                file=sys.stderr,
-            )
-            existing_iterations[model_id] = prior
+        for label, _ in prompt_pairs:
+            prior = parse_existing_iterations(output_path, model_id, label)
+            if prior:
+                print(
+                    f"Found {len(prior)} existing iteration(s) for '{label}' — will append.",
+                    file=sys.stderr,
+                )
+                existing[(model_id, label)] = prior
 
     results: list[ModelResult] = []
     try:
-        for model_id in args.models:
-            result = benchmark_model(
-                model_id=model_id,
-                prompt=args.prompt,
-                max_tokens=args.max_tokens,
-                iterations=args.iterations,
-                warmup=not args.no_warmup,
-            )
-            results.append(result)
+        for label, text in prompt_pairs:
+            for model_id in args.models:
+                result = benchmark_model(
+                    model_id=model_id,
+                    prompt=text,
+                    prompt_label=label,
+                    max_tokens=args.max_tokens,
+                    iterations=args.iterations,
+                    warmup=not args.no_warmup,
+                )
+                results.append(result)
     except KeyboardInterrupt:
         print("\nInterrupted — writing partial results...", file=sys.stderr)
 
@@ -413,13 +511,11 @@ def main():
         print("No successful results to write.", file=sys.stderr)
         return
 
-    # Prepend existing iterations so the summary and tables reflect all runs
+    # Prepend existing iterations so tables reflect all runs
     for r in results:
-        if r.model_id in existing_iterations:
-            r.iterations = existing_iterations[r.model_id] + r.iterations
-
-    total_iterations = max(len(r.iterations) for r in results) if results else args.iterations
-    args.iterations = total_iterations
+        key = (r.model_id, r.prompt_label)
+        if key in existing:
+            r.iterations = existing[key] + r.iterations
 
     markdown = format_results_markdown(device_info, results, args)
     with open(output_path, "w") as f:
