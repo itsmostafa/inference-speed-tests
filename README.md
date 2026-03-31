@@ -1,7 +1,7 @@
 # Inference Speed Tests on Local LLMs
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![GitHub Stars](https://img.shields.io/github/stars/itsmostafa/llm-engineering-skills)
+![GitHub Stars](https://img.shields.io/github/stars/itsmostafa/inference-speed-tests)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/itsmostafa/inference-speed-tests/pulls)
 
 Inference speed tests on Local Large Language Models on various devices. Feel free to contribute your results.
