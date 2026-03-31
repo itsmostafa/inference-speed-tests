@@ -5,6 +5,26 @@
 **OS**: macOS-26.2-arm64-arm-64bit-Mach-O
 **Max tokens**: 512
 
+## Prompt: `Given the following input, classify the verb as transitiv...`
+
+**Iterations**: 3
+
+### Summary
+
+| Model | Max Ctx | Prompt Tokens | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
+| ----- | ------- | ------------- | ---------- | -------------- | -------- | ---------------- | -------------- |
+| Qwen3.5-9B-MLX-4bit | N/A | 26 | 339.30 ± 28.99 | 89.76 ± 0.34 | 0.180 ± 0.005 | 5.16 ± 0.00 | 5.90 ± 0.03 |
+
+### Per-Iteration Details
+
+#### Qwen3.5-9B-MLX-4bit
+
+| Run | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
+| --- | ---------- | -------------- | -------- | ---------------- | -------------- |
+| 1 | 305.84 | 89.55 | 0.182 | 5.16 | 5.91 |
+| 2 | 355.04 | 89.59 | 0.184 | 5.16 | 5.91 |
+| 3 | 357.03 | 90.15 | 0.175 | 5.16 | 5.87 |
+
 ## Prompt: `prompts/500_word_story.md`
 
 **Iterations**: 6
@@ -13,7 +33,7 @@
 
 | Model | Max Ctx | Prompt Tokens | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
 | ----- | ------- | ------------- | ---------- | -------------- | -------- | ---------------- | -------------- |
-| Qwen3.5-9B-MLX-4bit | N/A | 18 | 241.74 ± 17.28 | 90.27 ± 0.49 | 0.180 ± 0.006 | 5.14 ± 0.00 | 5.86 ± 0.03 |
+| Qwen3.5-9B-MLX-4bit | N/A | 18 | 241.74 ± 17.27 | 90.27 ± 0.49 | 0.180 ± 0.007 | 5.14 ± 0.00 | 5.86 ± 0.03 |
 
 ### Per-Iteration Details
 
@@ -36,7 +56,7 @@
 
 | Model | Max Ctx | Prompt Tokens | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
 | ----- | ------- | ------------- | ---------- | -------------- | -------- | ---------------- | -------------- |
-| Qwen3.5-9B-MLX-4bit | N/A | 22K | 722.85 ± 50.27 | 72.62 ± 4.88 | 31.426 ± 2.264 | 8.85 ± 0.00 | 38.52 ± 2.76 |
+| Qwen3.5-9B-MLX-4bit | N/A | N/A | 722.85 ± 50.27 | 72.62 ± 4.88 | 31.426 ± 2.264 | 8.85 ± 0.00 | 38.52 ± 2.76 |
 
 ### Per-Iteration Details
 
