@@ -1,23 +1,46 @@
 # Inference Speed Test Results
 
-**Date**: 2026-03-28
+**Date**: 2026-03-30
 **Device**: Apple M5 Max | 128 GB RAM | 40-core GPU
 **OS**: macOS-26.4-arm64-arm-64bit-Mach-O
-**Prompt**: `Write a 500 word story`
-**Max tokens**: 512 | **Iterations**: 3
+**Max tokens**: 512
 
-## Summary
+## Prompt: `prompts/500_word_story.md`
 
-| Model | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
-| ----- | ---------- | -------------- | -------- | ---------------- | -------------- |
-| gpt-oss-20b-MXFP4-Q8 | 792.34 ± 8.24 | 139.34 ± 0.21 | 0.160 ± 0.001 | 12.19 ± 0.00 | 3.84 ± 0.00 |
+**Iterations**: 3
 
-## Per-Iteration Details
+### Summary
 
-### gpt-oss-20b-MXFP4-Q8
+| Model | Max Ctx | Prompt Tokens | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
+| ----- | ------- | ------------- | ---------- | -------------- | -------- | ---------------- | -------------- |
+| gpt-oss-20b-MXFP4-Q8 | N/A | 73 | 789.64 ± 1.64 | 137.76 ± 0.24 | 0.153 ± 0.002 | 12.19 ± 0.00 | 3.88 ± 0.01 |
+
+### Per-Iteration Details
+
+#### gpt-oss-20b-MXFP4-Q8
 
 | Run | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
 | --- | ---------- | -------------- | -------- | ---------------- | -------------- |
-| 1 | 787.71 | 139.57 | 0.161 | 12.19 | 3.84 |
-| 2 | 787.46 | 139.28 | 0.161 | 12.19 | 3.84 |
-| 3 | 801.85 | 139.17 | 0.159 | 12.19 | 3.85 |
+| 1 | 790.60 | 137.71 | 0.151 | 12.19 | 3.88 |
+| 2 | 790.57 | 138.02 | 0.153 | 12.19 | 3.87 |
+| 3 | 787.74 | 137.55 | 0.155 | 12.19 | 3.88 |
+
+## Prompt: `prompts/summarize-turbo-quant.md`
+
+**Iterations**: 3
+
+### Summary
+
+| Model | Max Ctx | Prompt Tokens | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
+| ----- | ------- | ------------- | ---------- | -------------- | -------- | ---------------- | -------------- |
+| gpt-oss-20b-MXFP4-Q8 | N/A | 21K | 4211.48 ± 310.15 | 105.86 ± 0.37 | 5.250 ± 0.387 | 13.42 ± 0.00 | 10.09 ± 0.40 |
+
+### Per-Iteration Details
+
+#### gpt-oss-20b-MXFP4-Q8
+
+| Run | Prompt tps | Generation tps | TTFT (s) | Peak Memory (GB) | Total Time (s) |
+| --- | ---------- | -------------- | -------- | ---------------- | -------------- |
+| 1 | 4513.75 | 106.19 | 4.884 | 13.42 | 9.71 |
+| 2 | 4226.68 | 105.92 | 5.211 | 13.42 | 10.05 |
+| 3 | 3894.01 | 105.47 | 5.655 | 13.42 | 10.52 |
