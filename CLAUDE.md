@@ -13,6 +13,7 @@ uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit mlx-community/Qwen2.5-
 
 # All options
 uv run src/main.py MODEL_ID [-n ITERATIONS] [-p "inline prompt"] [--prompt-files FILE ...] [--max-tokens N] [-o output.md] [--no-warmup]
+  [--dataset DATASET_ID] [--dataset-field FIELD] [--dataset-config CONFIG] [--dataset-split SPLIT] [--dataset-samples N] [--dataset-seed SEED]
 
 # Multiple prompts — --prompt is repeatable; results are grouped by prompt in the output
 uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
@@ -21,11 +22,19 @@ uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
 # Prompts from files
 uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
   --prompt-files prompts/500_word_story.md prompts/summarize-turbo-quant.md
+
+# Sample from a HuggingFace dataset (streaming — no full download)
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+  --dataset EdinburghNLP/xsum --dataset-field document --dataset-samples 2 -n 1 --no-warmup
+
+# Dataset with a config/subset name
+uv run src/main.py mlx-community/Qwen2.5-7B-Instruct-4bit \
+  --dataset cnn_dailymail --dataset-config 3.0.0 --dataset-field article
 ```
 
 ## Architecture
 
-This is a single-script project (`src/main.py`) with one dependency (`mlx-lm`). All logic lives in `src/main.py`.
+This is a single-script project (`src/main.py`) with two dependencies (`mlx-lm`, `datasets`). All logic lives in `src/main.py`.
 
 **Benchmark flow:**
 1. `main()` → builds the list of `(label, text)` prompt pairs, calls `get_device_info()`, then loops over prompts × models calling `benchmark_model()` for each combination
@@ -37,11 +46,11 @@ This is a single-script project (`src/main.py`) with one dependency (`mlx-lm`). 
 - `IterationResult` — raw metrics for one run
 - `ModelResult` — holds `prompt_label`, `context_size`, all iterations, and any error string
 
-**Prompt handling:** `format_prompt()` applies the model's chat template if `tokenizer.chat_template` exists, otherwise falls back to the raw prompt string. The default prompt is loaded from `prompts/500_word_story.md`. Pass `--prompt` (repeatable) for inline strings or `--prompt-files` for file paths; both can be combined.
+**Prompt handling:** `format_prompt()` applies the model's chat template if `tokenizer.chat_template` exists, otherwise falls back to the raw prompt string. When no prompt source is given, the default is 1 sample from `tatsu-lab/alpaca` (instruction field). Pass `--prompt` (repeatable) for inline strings, `--prompt-files` for file paths, or `--dataset` to stream samples from any HuggingFace dataset; all three sources can be combined. `load_hf_prompts()` lazy-imports `datasets` and uses streaming to avoid downloading full splits.
 
 ## Repository context
 
-The `README.md` and `mac mini.md` contain hand-collected benchmark data from community contributors (tokens/s across various Apple Silicon devices). The standard test prompt used historically is `"Write a 500 word story"`, stored in `prompts/500_word_story.md` and used as the default when no `--prompt` or `--prompt-files` flag is provided. Additional prompt files live alongside it in `prompts/`.
+The `README.md` and `mac mini.md` contain hand-collected benchmark data from community contributors (tokens/s across various Apple Silicon devices). The standard test prompt used historically is `"Write a 500 word story"`, stored in `prompts/500_word_story.md`; the `prompts/` directory is kept for backward compatibility with `--prompt-files`. The new default (when no prompt source is given) is 1 sample from `tatsu-lab/alpaca`.
 
 All models used are MLX-format models from HuggingFace (typically under the `mlx-community/` org). This script only works on Apple Silicon (macOS, MLX framework).
 

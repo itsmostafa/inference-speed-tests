@@ -23,18 +23,19 @@ uv sync
 
 ```bash
 # Benchmark a single model (1 iteration)
+# Default prompt: 1 sample from tatsu-lab/alpaca (instruction field)
 uv run src/main.py mlx-community/Qwen3-8B-4bit -n 1
 
 # Benchmark multiple models with 3 iterations
 uv run src/main.py mlx-community/Qwen3-8B-4bit mlx-community/Qwen3-14B-4bit
 
-# Custom prompt, output file, and iteration count
+# Custom inline prompt, output file, and iteration count
 uv run src/main.py mlx-community/Qwen3-8B-4bit \
   --prompt "Explain quantum computing" \
   --iterations 5 \
   --output my_results.md
 
-# Multiple prompts in one run (results grouped by prompt)
+# Multiple inline prompts in one run (results grouped by prompt)
 uv run src/main.py mlx-community/Qwen3-8B-4bit \
   --prompt "Write a 500 word story" \
   --prompt "Summarize the history of Rome"
@@ -42,7 +43,41 @@ uv run src/main.py mlx-community/Qwen3-8B-4bit \
 # Prompts from files
 uv run src/main.py mlx-community/Qwen3-8B-4bit \
   --prompt-files prompts/500_word_story.md prompts/summarize-turbo-quant.md
+
+# Sample prompts from a HuggingFace dataset
+uv run src/main.py mlx-community/Qwen3-8B-4bit \
+  --dataset EdinburghNLP/xsum --dataset-field document --dataset-samples 3
+
+# Long-form prompts (CNN/DailyMail articles, ~600–1200 tokens)
+uv run src/main.py mlx-community/Qwen3-8B-4bit \
+  --dataset cnn_dailymail --dataset-config 3.0.0 --dataset-field article
+
+# Reasoning prompts (GSM8K math questions)
+uv run src/main.py mlx-community/Qwen3-8B-4bit \
+  --dataset gsm8k --dataset-config main --dataset-field question
 ```
+
+**Dataset flags** (all optional when `--dataset` is set):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dataset DATASET_ID` | — | HuggingFace dataset to sample from |
+| `--dataset-field FIELD` | — | Column to use as prompt text (required with `--dataset`) |
+| `--dataset-config CONFIG` | — | Dataset config/subset (e.g. `3.0.0` for `cnn_dailymail`) |
+| `--dataset-split SPLIT` | `train` | Dataset split to sample from |
+| `--dataset-samples N` | `1` | Number of samples to draw |
+| `--dataset-seed SEED` | `42` | Random seed for reproducible sampling |
+
+**Recommended datasets** for varying prompt lengths:
+
+| Length | Dataset | Config | Field | Avg tokens |
+|--------|---------|--------|-------|------------|
+| Short (default) | `tatsu-lab/alpaca` | — | `instruction` | ~30–80 |
+| Medium | `EdinburghNLP/xsum` | — | `document` | ~200–400 |
+| Long | `cnn_dailymail` | `3.0.0` | `article` | ~600–1200 |
+| Reasoning | `gsm8k` | `main` | `question` | ~50–200 |
+
+Only a small shuffle buffer (~1000 rows) is downloaded — not the full dataset. Results are cached locally by the `datasets` library, so repeated runs with the same seed skip re-downloading.
 
 Results are written as a Markdown file grouped by prompt, each with a summary table (mean ± stdev across iterations) and per-iteration details including model context size, prompt tps, generation tps, time-to-first-token, peak memory, and total time.
 
