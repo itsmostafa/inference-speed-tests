@@ -12,8 +12,8 @@ from pathlib import Path
 
 from mlx_lm import load, stream_generate
 
-_PROMPT_FILE = Path(__file__).parent.parent / "prompts" / "500_word_story.md"
-DEFAULT_PROMPT = _PROMPT_FILE.read_text().strip()
+DEFAULT_DATASET = "tatsu-lab/alpaca"
+DEFAULT_DATASET_FIELD = "instruction"
 DEFAULT_MAX_TOKENS = 512
 DEFAULT_ITERATIONS = 3
 
@@ -115,6 +115,28 @@ def format_prompt(tokenizer, prompt: str) -> str:
         except Exception:
             pass
     return prompt
+
+
+def load_hf_prompts(
+    dataset_id: str,
+    field: str,
+    config: str | None = None,
+    split: str = "train",
+    samples: int = 1,
+    seed: int = 42,
+) -> list[tuple[str, str]]:
+    from datasets import load_dataset  # lazy import
+
+    args = [dataset_id] + ([config] if config else [])
+    # streaming=True avoids downloading the full split — only buffers ~1000 rows
+    ds = load_dataset(*args, split=split, streaming=True)
+    ds = ds.shuffle(seed=seed, buffer_size=max(samples * 10, 1000)).take(samples)
+    pairs = []
+    for row in ds:
+        text = str(row[field]).strip()
+        label = (text[:57] + "...") if len(text) > 60 else text
+        pairs.append((label, text))
+    return pairs
 
 
 def benchmark_model(
@@ -514,6 +536,41 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip warmup run before timed iterations",
     )
+    parser.add_argument(
+        "--dataset",
+        metavar="DATASET_ID",
+        help="HuggingFace dataset ID to sample prompts from (e.g. tatsu-lab/alpaca)",
+    )
+    parser.add_argument(
+        "--dataset-config",
+        metavar="CONFIG",
+        help="Dataset config/subset name (e.g. 3.0.0 for cnn_dailymail)",
+    )
+    parser.add_argument(
+        "--dataset-field",
+        metavar="FIELD",
+        help="Dataset column to use as prompt text (required with --dataset)",
+    )
+    parser.add_argument(
+        "--dataset-split",
+        default="train",
+        metavar="SPLIT",
+        help="Dataset split to sample from (default: train)",
+    )
+    parser.add_argument(
+        "--dataset-samples",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of samples to draw from the dataset (default: 1)",
+    )
+    parser.add_argument(
+        "--dataset-seed",
+        type=int,
+        default=42,
+        metavar="SEED",
+        help="Random seed for dataset sampling (default: 42)",
+    )
     return parser.parse_args()
 
 
@@ -534,9 +591,19 @@ def main():
             label = (p[:57] + "...") if len(p) > 60 else p
             prompt_pairs.append((label, p))
 
+    if args.dataset:
+        if not args.dataset_field:
+            print("Error: --dataset-field is required when --dataset is given", file=sys.stderr)
+            sys.exit(1)
+        print(f"Loading {args.dataset_samples} sample(s) from {args.dataset}...", file=sys.stderr)
+        prompt_pairs.extend(load_hf_prompts(
+            args.dataset, args.dataset_field, args.dataset_config,
+            args.dataset_split, args.dataset_samples, args.dataset_seed,
+        ))
+
     if not prompt_pairs:
-        rel = str(_PROMPT_FILE.relative_to(Path(__file__).parent.parent))
-        prompt_pairs = [(rel, DEFAULT_PROMPT)]
+        print(f"No prompt specified — loading 1 sample from {DEFAULT_DATASET} ({DEFAULT_DATASET_FIELD})...", file=sys.stderr)
+        prompt_pairs = load_hf_prompts(DEFAULT_DATASET, DEFAULT_DATASET_FIELD)
 
     print("Collecting device info...", file=sys.stderr)
     device_info = get_device_info()
